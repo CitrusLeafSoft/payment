@@ -268,6 +268,65 @@ class CCAvenueGateway implements PaymentGatewayInterface
         }
 
     }
+    
+    /**
+     * Function to refund an order
+     * @param $order_number Order number for which the status needs to be checked!
+     * @param int $transaction_id transaction reference by ccavenue for which the status needs to be checked!
+     */
+    public function refundOrder($reference_no, $refund_ref_no, $amount)
+    {
+        $merchant_data = [];
+
+        $response_string = '';
+
+        $order_data = [];
+
+        if ($merchant_data) {
+
+            $encRequest = $this->encrypt(json_encode($merchant_data), env('CCAVENUE_WORKING_KEY'));
+
+            $client = new \GuzzleHttp\Client();
+
+            $order_status_params = [
+                'enc_request' => $encRequest,
+                'access_code' => env('CCAVENUE_ACCESS_CODE'),
+                'command' => 'refundOrder',
+                'reference_no' => $reference_no,
+                'refund_ref_no' => $refund_ref_no,
+                'amount' => $amount,
+                'request_type' => "JSON",
+                'version' => "1.1"
+            ];
+
+            $request_parameters = http_build_query($order_status_params);
+
+            try {
+
+                //making request to to CCAvenue server with the prepared parameters
+                $response_string = $client->post($this->getAPIEndPoint() . $request_parameters);
+
+                //ccavenue reseponsds with a serialized url response which should be parsed
+                parse_str($response_string->getBody()->getContents(), $order_data);
+
+                return $this->getOrderStatus($order_data);
+
+
+            } catch (BadResponseException $e) {
+                dd("Error occured" . $e->getMessage());
+
+            } catch (ConnectException $e) { // Wrong URL pinged or server not responding
+                dd("Error occured" . $e->getMessage());
+
+            } catch (ClientException $e) { // URL Response error
+                dd("Error occured" . $e->getMessage());
+
+            }
+
+            return false;
+        }
+
+    }
 
 
     /**
